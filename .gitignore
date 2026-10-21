@@ -1,0 +1,5 @@
+build/*
+!build/.gitkeep
+results/*
+!results/.gitkeep
+min_max
