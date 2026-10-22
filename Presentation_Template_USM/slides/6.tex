@@ -1,19 +1,21 @@
 \begin{frame}{Evidencia y cierre}
-  \begin{block}{Carga máxima observada en ejecuciones de ejemplo}
+  \begin{block}{Carga máxima (créditos) y llamadas a la función de evaluación}
     \centering
-    \begin{tabular}{lcc}
+    \small
+    \begin{tabular}{lccc}
       \toprule
-      Instancia & Inicialización & MMAS \\
+      Instancia & Ref. literatura & Inicialización & MMAS \\
       \midrule
-      BACP8  & 18 & 17 \\
-      BACP10 & 16 & 14 \\
-      BACP12 & 21 & 18 \\
+      BACP8  & 17 & 18 / 740 & 17 / 5.000 \\
+      BACP10 & 14 & 16 / 1.045 & 14 / 5.000 \\
+      BACP12 & 18\textsuperscript{*} & 21 / 8.182 & 18 / 5.000 \\
       \bottomrule
     \end{tabular}
+    \par\vspace{1mm}\scriptsize Cada celda de método indica carga máxima / evaluaciones; semilla 1.
   \end{block}
   \begin{alertblock}{Alcance de estos números}
-    Son ejemplos con presupuestos distintos; no son una comparación
-    controlada ni prueban optimalidad. En BACP12 sigue abierta la
-    discrepancia entre referencias 17 y 18.
+    \scriptsize\textsuperscript{*} BACP12: el informe de Valencia usa 18;
+    otras fuentes reportan 17. Son ejecuciones demostrativas con presupuestos
+    distintos, no una comparación controlada ni una prueba de optimalidad.
   \end{alertblock}
 \end{frame}

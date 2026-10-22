@@ -70,12 +70,13 @@ para ensayar; no incluyen una demostración en vivo.
 
 ## 6. Evidencia y cierre — 4:05 a 4:40
 
-> «Las cargas de ejemplo son 18 y 17 para BACP8, 16 y 14 para BACP10, y 21
-> y 18 para BACP12, comparando inicialización y MMAS. Como se usaron
-> presupuestos distintos, estos números no son una comparación controlada
-> ni prueban optimalidad. Sigue pendiente acordar escenarios y repetir
-> experimentos. En BACP12 declaramos la discrepancia entre referencias 17
-> y 18».
+> «Las referencias de la literatura que usamos son 17, 14 y 18 créditos
+> para BACP8, BACP10 y BACP12. La tabla muestra carga máxima y llamadas a
+> la función de evaluación: en inicialización, 18 con 740, 16 con 1.045 y
+> 21 con 8.182; en MMAS, 17, 14 y 18 con 5.000 llamadas cada uno.
+> Son ejecuciones de ejemplo con presupuestos distintos, no una comparación
+> controlada ni una prueba de optimalidad. Para BACP12 hay publicaciones
+> que informan 17; la discrepancia sigue abierta».
 
 ## Recordatorios para el ensayo
 

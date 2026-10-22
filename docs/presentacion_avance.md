@@ -75,13 +75,14 @@ Material para una exposición de **máximo 5 minutos**: unos 4 minutos y 20 segu
 
 **En la diapositiva**
 
-| Instancia | Mejor carga en una inicialización de ejemplo | Mejor carga en una ejecución MMAS de ejemplo |
-| --- | ---: | ---: |
-| BACP8 | 18 | 17 |
-| BACP10 | 16 | 14 |
-| BACP12 | 21 | 18 |
+| Instancia | Referencia de la literatura | Inicialización: carga / evaluaciones | MMAS: carga / evaluaciones |
+| --- | ---: | ---: | ---: |
+| BACP8 | 17 | 18 / 740 | 17 / 5.000 |
+| BACP10 | 14 | 16 / 1.045 | 14 / 5.000 |
+| BACP12 | 18* | 21 / 8.182 | 18 / 5.000 |
 
-- Resultados **demostrativos**: las dos columnas usan configuraciones y presupuestos distintos; no constituyen una comparación controlada ni prueban optimalidad.
+- Cada par indica carga máxima en créditos y llamadas a la función de evaluación. Son ejecuciones estáticas con semilla 1: inicialización con 20 intentos, 100 pasos de reparación, RCL 3 y presupuesto máximo 92.000; MMAS con 5 intentos, 30 pasos, RCL 3, presupuesto inicial 500 y global 5.000, 5 hormigas, α=1, β=2, evaporación 0,2 y razón mínima de feromona 0,05.
+- Resultados **demostrativos**: las dos columnas usan configuraciones y presupuestos distintos; no constituyen una comparación controlada ni prueban optimalidad. *La referencia 18 de BACP12 proviene del informe de Francisco; la tabla de decisiones y otros trabajos reportan 17. La discrepancia sigue abierta para esta instancia.
 
 **Para decir:** «El avance cubre los componentes exigidos y además una búsqueda funcional y su evaluación. El siguiente trabajo es acordar escenarios, automatizar las ejecuciones y analizar resultados reproducibles. En BACP12 se mantiene abierta la discrepancia entre referencias de 17 y 18 créditos».
 
