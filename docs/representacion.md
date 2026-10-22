@@ -7,36 +7,40 @@ plan es el vector $X_t=(x_i)_{i\in U_t}$.
 ## Cómo está implementada
 
 - `AcademicState` guarda el período actual y qué cursos están aprobados.
-- `Plan::course_indices[k]` identifica el curso pendiente de la posición
-  `k`. Las posiciones siguen el orden de `courses` en la instancia `.dat`.
-- `Plan::assigned_periods[k]` guarda el período $x_i$ asignado a ese curso.
-  El valor `0` significa *sin asignar* mientras una hormiga construye el
-  plan. En una solución terminada, todos los valores deben estar en
-  $P_t=\{t,\ldots,T\}$.
+- `Plan::assigned_periods[i]` es la única estructura de asignación: la
+  posición `i` identifica directamente `Instance::courses[i]` y guarda
+  su período $x_i$ si el curso está pendiente.
+- El vector almacenado tiene $|C|$ posiciones estables. En las posiciones
+  de cursos aprobados se guarda `0`; en cursos pendientes, `0` significa
+  *aún sin asignar* durante la construcción. `AcademicState::passed[i]`
+  distingue los dos casos. Un plan completo tiene valores en
+  $P_t=\{t,\ldots,T\}$ para todos los pendientes y `0` para los aprobados.
 
-Ejemplo: si `course_indices = [0, 2, 4]` y
-`assigned_periods = [1, 2, 3]`, los tres cursos pendientes de esas
-posiciones se cursarán respectivamente en los períodos 1, 2 y 3. Los
-cursos ya aprobados no aparecen en $X_t$.
+Ejemplo: con cinco cursos y el curso 1 aprobado,
+`passed = [0, 1, 0, 0, 0]` y `assigned_periods = [1, 0, 2, 3, 3]`.
+Así, el curso 2 queda en el período 2 y el curso 4 en el 3. La posición
+1 existe en memoria, pero no pertenece al plan matemático $X_t$, que
+incluye solo los cursos pendientes.
 
 ## Relación con Max-Min Ant System
 
 Una hormiga completa el vector eligiendo el período de cada curso
-pendiente. Esta estructura permite asociar una feromona a cada decisión
+pendiente en su posición fija. Esta estructura permite asociar una feromona a cada decisión
 `(curso, período)`, consultar la carga parcial y verificar restricciones
-durante la construcción. Al replanificar, se crea un **nuevo vector** para
-los cursos que permanezcan pendientes. La política de feromonas y la
+durante la construcción. Al replanificar, se crea un **nuevo vector** del
+mismo tamaño; los cursos aprobados permanecen en cero y los pendientes
+se vuelven a asignar. La política de feromonas y la
 construcción guiada por ellas están descritas en `mmas.md`.
 
-Se eligió el vector porque corresponde exactamente a $X_t$ y cada curso
-pendiente tiene una sola posición. Una matriz binaria curso-período
+Se eligió el vector porque cada curso tiene una posición estable y cada
+pendiente recibe una sola asignación. Una matriz binaria curso-período
 necesitaría comprobar adicionalmente que cada curso tenga exactamente una
 asignación.
 
 ## Evaluación disponible
 
-`evaluate_plan` comprueba que el vector corresponda a $U_t$, que todas
-las asignaciones estén en el horizonte, que los prerrequisitos pendientes
+`evaluate_plan` comprueba el tamaño del vector, los ceros de los aprobados,
+que todos los pendientes tengan asignaciones en el horizonte y que los prerrequisitos pendientes
 vayan antes de sus cursos dependientes y que créditos y cantidad de cursos
 respeten los límites de **cada** período. Para planes factibles calcula:
 
@@ -47,8 +51,8 @@ La comparación es lexicográfica. En un mismo estado, el desempate se
 calcula internamente con $\sum_p L_p^2$, equivalente a ordenar por el error
 cuadrático y sin problemas de redondeo.
 
-La plantilla que muestra `min_max` sin `--init` aún contiene ceros: **no es
-una solución factible**. La inicialización greedy aleatorizada con
+La plantilla que muestra `min_max` sin `--init` aún contiene ceros en cursos
+pendientes: **no es una solución factible**. La inicialización greedy aleatorizada con
 reparación ya puede generar planes completos y validarlos; véase
 `inicializacion.md`. La búsqueda guiada por feromonas de MMAS se ejecuta
 con `--mmas` y se documenta en `mmas.md`.

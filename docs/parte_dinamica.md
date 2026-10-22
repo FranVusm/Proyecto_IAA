@@ -82,8 +82,8 @@ por par `(curso, semestre)` y semilla: el resultado para ese par no cambia
 si otro algoritmo construye un plan distinto. Esta independencia es una
 decisión de simulación, no una condición adicional del modelo matemático.
 
-El ejecutable recorre todos los semestres con `--simulate --approval-prob Q
---simulation-seed N` junto con los parámetros de `--init`. Se puede fijar
+El ejecutable recorre todos los semestres con `--simulate --approval-prob Q`
+junto con `--seed N` y los parámetros de `--init`. Se puede fijar
 un $q_i$ concreto con `--course-approval id=Q`, repetido para varios cursos.
 Después de cada semestre informa aprobaciones, reprobaciones y nuevo estado;
 sin `--period-cap`, si no encuentra un plan factible se detiene con

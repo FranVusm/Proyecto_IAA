@@ -41,9 +41,10 @@ ejecución y agregan una fila a `results/resultados.csv` cuando se ejecuta
 `advance_state` actualiza el estado con aprobaciones de los cursos
 programados en el período actual; `--advance-passed` ejecuta un avance con
 resultados explícitos. `simulate_semester` simula resultados Bernoulli con
-un vector de probabilidades externo; `--simulate --approval-prob Q
---simulation-seed N` recorre el horizonte, con `--course-approval id=Q`
-para ajustar cursos. La semilla fija sorteos por `(curso, período)` para
+un vector de probabilidades externo; `--simulate --approval-prob Q`
+recorre el horizonte, con `--course-approval id=Q`
+para ajustar cursos. La única opción `--seed N` controla la búsqueda y fija
+sorteos por `(curso, período)` para
 compartir escenarios entre algoritmos. La independencia entre resultados
 es una decisión de simulación que el informe no impone.
 La variante experimental `--period-cap N` (`N>T`) permite continuar con

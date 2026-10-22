@@ -19,8 +19,9 @@ búsqueda posterior se describe en `mmas.md`.
 
 ## Procedimiento implementado
 
-1. Se parte del estado $(A_t,t)$ y del vector $X_t$ con los cursos de
-   $U_t$. Un prechequeo detecta imposibilidades evidentes por créditos,
+1. Se parte del estado $(A_t,t)$ y de un vector indexado por curso, con
+   valor inicial cero. Solo las posiciones de $U_t$ se asignan; `passed[i]`
+   permite distinguir aprobados de pendientes sin asignar. Un prechequeo detecta imposibilidades evidentes por créditos,
    cantidad de cursos, horizonte y cadenas de prerrequisitos.
 2. Para cada curso pendiente se calcula su semestre más temprano y más
    tardío posible según los prerrequisitos pendientes. Durante la

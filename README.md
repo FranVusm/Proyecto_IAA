@@ -39,9 +39,9 @@ make
 ./min_max "instances/classic/bacp8.dat" --period 2 --passed dew100,fis100
 ./min_max "instances/classic/bacp8.dat" --init --seed 1 --attempts 20 --repair-steps 100 --rcl 3 --eval-budget 92000
 ./min_max "instances/classic/bacp8.dat" --init --seed 1 --attempts 20 --repair-steps 100 --rcl 3 --eval-budget 92000 --advance-passed ""
-./min_max "instances/classic/bacp8.dat" --init --seed 1 --attempts 20 --repair-steps 100 --rcl 3 --eval-budget 92000 --simulate --approval-prob 0.8 --simulation-seed 7
+./min_max "instances/classic/bacp8.dat" --init --seed 1 --attempts 20 --repair-steps 100 --rcl 3 --eval-budget 92000 --simulate --approval-prob 0.8
 ./min_max "instances/classic/bacp8.dat" --mmas --seed 1 --attempts 5 --repair-steps 30 --rcl 3 --init-budget 500 --eval-budget 5000 --ants 5 --alpha 1 --beta 2 --evaporation 0.2 --tau-min-ratio 0.05 --reference-value 17
-./min_max "instances/classic/bacp8.dat" --mmas --seed 1 --attempts 5 --repair-steps 30 --rcl 3 --init-budget 500 --eval-budget 5000 --ants 5 --alpha 1 --beta 2 --evaporation 0.2 --tau-min-ratio 0.05 --simulate --approval-prob 0.8 --simulation-seed 7 --period-cap 12
+./min_max "instances/classic/bacp8.dat" --mmas --seed 1 --attempts 5 --repair-steps 30 --rcl 3 --init-budget 500 --eval-budget 5000 --ants 5 --alpha 1 --beta 2 --evaporation 0.2 --tau-min-ratio 0.05 --simulate --approval-prob 0.8 --period-cap 12
 make test
 ```
 
@@ -88,8 +88,8 @@ salida en ambos casos es `3`.
 `--simulate` ejecuta el ciclo completo **planificar → simular aprobaciones →
 actualizar estado → replanificar** hasta `T` o hasta que deje de existir un
 plan factible validado. Requiere `--approval-prob Q` para fijar una
-probabilidad general en `[0,1]` y `--simulation-seed N` para reproducir el
-escenario. Puede ajustar cursos concretos con opciones repetidas como
+probabilidad general en `[0,1]`. La opción `--seed N` controla tanto la
+búsqueda como los sorteos académicos. Puede ajustar cursos concretos con opciones repetidas como
 `--course-approval fis100=0.6`. Este modo y `--advance-passed` son
 excluyentes. Los resultados académicos de cada par `(curso, semestre)`
 quedan fijados por la semilla aunque cambie la planificación; esto permite

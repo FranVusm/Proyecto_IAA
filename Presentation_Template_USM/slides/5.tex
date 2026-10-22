@@ -1,0 +1,30 @@
+\begin{frame}{Búsqueda MMAS y replanificación}
+  \small
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.49\textwidth}
+      \begin{block}{Max-Min Ant System}
+        Cada hormiga construye $X_t$ usando
+        \[P(p\mid i)\propto \tau_{i,p}^{\alpha}\eta_{i,p}^{\beta}.\]
+        Evapora feromona, refuerza el mejor plan factible global y acota
+        $\tau\in[\tau_{\min},\tau_{\max}]$.
+      \end{block}
+      \begin{exampleblock}{Control de la búsqueda}
+        La semilla reproduce la ejecución; \texttt{--eval-budget} limita
+        las evaluaciones totales, incluida la inicialización.
+      \end{exampleblock}
+    \end{column}
+    \begin{column}{0.47\textwidth}
+      \begin{block}{Ciclo dinámico}
+        Planificar $\rightarrow$ cursar $\rightarrow$ observar aprobaciones
+        y reprobaciones $\rightarrow$ actualizar $A_{t+1}$
+        $\rightarrow$ replanificar $U_{t+1}$.
+      \end{block}
+      \begin{alertblock}{Extensión experimental}
+        \texttt{--period-cap} permite continuar hasta una cota de semestres.
+        Reinicia la búsqueda con los cursos pendientes y mantiene Bernoulli
+        en los períodos adicionales. Se reporta por separado del modelo
+        original.
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+\end{frame}

@@ -30,7 +30,7 @@ void usage(const char* command, std::ostream& output) {
            << " \"instancia.dat\" [--period N] [--passed id1,id2,...]\n"
            << "       [--init --seed N --attempts N --repair-steps N --rcl N"
               " --eval-budget N] [--advance-passed id1,id2,...]\n"
-           << "       [--simulate --approval-prob Q --simulation-seed N"
+           << "       [--simulate --approval-prob Q"
               " --course-approval id=Q ... --period-cap N]\n"
            << "       [--mmas --init-budget N --ants N --alpha A --beta B"
               " --evaporation R --tau-min-ratio R] [--reference-value N]"
@@ -40,7 +40,8 @@ void usage(const char* command, std::ostream& output) {
               " como reserva inicial.\n";
     output << "--advance-passed requiere --init o --mmas;"
               " use una cadena vacía si todos reprueban.\n";
-    output << "--simulate requiere --init o --mmas, Q en [0,1] y una semilla;"
+    output << "--seed controla la búsqueda y los sorteos Bernoulli.\n";
+    output << "--simulate requiere --init o --mmas y Q en [0,1];"
               " replanifica hasta T o la cota indicada.\n";
     output << "--period-cap requiere --mmas y --simulate o --advance-passed;"
               " permite replanificar hasta N > T.\n";
@@ -145,10 +146,9 @@ void print_plan(const dbacp::Instance& instance, const dbacp::AcademicState& sta
                   << " créditos, "
                   << best.evaluation.courses_per_period[offset]
                   << " cursos):";
-        for (std::size_t k = 0; k < best.plan.course_indices.size(); ++k) {
-            if (best.plan.assigned_periods[k] == period) {
-                std::cout << ' '
-                          << instance.courses[best.plan.course_indices[k]].id;
+        for (std::size_t course = 0; course < instance.courses.size(); ++course) {
+            if (!state.passed[course] && best.plan.assigned_periods[course] == period) {
+                std::cout << ' ' << instance.courses[course].id;
             }
         }
         std::cout << '\n';
@@ -186,6 +186,7 @@ std::optional<dbacp::InitializedSolution> show_initialization(
             print_infeasible(*result.best_infeasible);
         }
         report.record_search(instance, state, "original", std::nullopt,
+                             std::nullopt,
                              result.best_infeasible, result.diagnostics,
                              result.evaluations, result.evaluations, 0, 0, seconds);
         return std::nullopt;
@@ -197,8 +198,8 @@ std::optional<dbacp::InitializedSolution> show_initialization(
             best = &candidate;
         }
     }
-    print_plan(instance, state, *best, "Mejor plan factible");
-    report.record_search(instance, state, "original", *best,
+    print_plan(instance, state, *best, "Mejor plan inicial");
+    report.record_search(instance, state, "original", *best, *best,
                          result.best_infeasible, result.diagnostics,
                          result.evaluations, result.evaluations, 0, 0, seconds);
     return *best;
@@ -218,6 +219,14 @@ std::optional<dbacp::InitializedSolution> show_mmas(
               << result.ants_built << " hormigas, "
               << result.iterations << " iteraciones, "
               << result.improvements << " mejoras\n";
+    if (result.best_initial_feasible) {
+        const auto& value = result.best_initial_feasible->evaluation;
+        std::cout << "Mejor valor de inicialización: carga máxima="
+                  << value.maximum_load << ", E="
+                  << value.squared_balance_error << '\n';
+    } else {
+        std::cout << "Mejor valor de inicialización: sin plan factible inicial\n";
+    }
     for (const std::string& diagnostic : result.diagnostics) {
         std::cout << "Diagnóstico: " << diagnostic << '\n';
     }
@@ -227,6 +236,7 @@ std::optional<dbacp::InitializedSolution> show_mmas(
             print_infeasible(*result.best_infeasible);
         }
         report.record_search(instance, state, phase, std::nullopt,
+                             result.best_initial_feasible,
                              result.best_infeasible, result.diagnostics,
                              result.evaluations, result.initialization_evaluations,
                              result.ants_built, result.iterations, seconds);
@@ -234,6 +244,7 @@ std::optional<dbacp::InitializedSolution> show_mmas(
     }
     print_plan(instance, state, *result.best_feasible, "Mejor plan MMAS");
     report.record_search(instance, state, phase, result.best_feasible,
+                         result.best_initial_feasible,
                          result.best_infeasible, result.diagnostics,
                          result.evaluations, result.initialization_evaluations,
                          result.ants_built, result.iterations, seconds);
@@ -281,7 +292,6 @@ int main(int argc, char* argv[]) {
         std::optional<double> tau_min_ratio;
         std::optional<std::vector<std::string>> advance_passed;
         std::optional<double> approval_probability;
-        std::optional<std::uint64_t> simulation_seed;
         std::optional<int> period_cap;
         std::optional<int> reference_value;
         std::string results_dir = "results";
@@ -334,9 +344,6 @@ int main(int argc, char* argv[]) {
             } else if (option == "--approval-prob" && i + 1 < argc &&
                        !approval_probability) {
                 approval_probability = parse_probability(argv[++i], option);
-            } else if (option == "--simulation-seed" && i + 1 < argc &&
-                       !simulation_seed) {
-                simulation_seed = parse_unsigned(argv[++i], option);
             } else if (option == "--period-cap" && i + 1 < argc &&
                        !period_cap) {
                 period_cap = parse_period(argv[++i], option);
@@ -389,15 +396,12 @@ int main(int argc, char* argv[]) {
         if (advance_passed && !solve) {
             throw std::invalid_argument("--advance-passed requiere --init o --mmas");
         }
-        if (simulate && (!solve || !approval_probability ||
-                         !simulation_seed || advance_passed)) {
+        if (simulate && (!solve || !approval_probability || advance_passed)) {
             throw std::invalid_argument(
-                "--simulate requiere --init o --mmas, --approval-prob y "
-                "--simulation-seed; "
+                "--simulate requiere --init o --mmas y --approval-prob; "
                 "no se combina con --advance-passed");
         }
-        if (!simulate && (approval_probability || simulation_seed ||
-                          !course_probabilities.empty())) {
+        if (!simulate && (approval_probability || !course_probabilities.empty())) {
             throw std::invalid_argument(
                 "los parámetros de aprobación requieren --simulate");
         }
@@ -466,22 +470,25 @@ int main(int argc, char* argv[]) {
                   << "Validación estructural: correcta\n"
                   << "Estado: t=" << state.current_period
                   << ", aprobados=" << passed_ids.size()
-                  << ", pendientes=" << plan.course_indices.size() << '\n'
+                  << ", pendientes=" << instance.courses.size() - passed_ids.size() << '\n'
                   << "Representación X_t: " << plan.assigned_periods.size()
-                  << " posiciones; 0 indica aún sin asignar\n";
+                  << " posiciones indexadas por curso; 0 = aprobado o aún sin asignar\n";
         if (period_cap) {
             std::cout << "Cota opcional de períodos: " << *period_cap << '\n';
         }
-        if (!plan.course_indices.empty()) {
+        if (passed_ids.size() < instance.courses.size()) {
             std::cout << "Primeras posiciones: ";
-            const std::size_t shown = std::min<std::size_t>(5, plan.course_indices.size());
-            for (std::size_t k = 0; k < shown; ++k) {
-                if (k > 0) {
+            std::size_t shown = 0;
+            for (std::size_t course = 0; course < instance.courses.size() && shown < 5; ++course) {
+                if (state.passed[course]) {
+                    continue;
+                }
+                if (shown++ > 0) {
                     std::cout << ", ";
                 }
-                std::cout << instance.courses[plan.course_indices[k]].id << "=?";
+                std::cout << instance.courses[course].id << "=?";
             }
-            if (shown < plan.course_indices.size()) {
+            if (shown < instance.courses.size() - passed_ids.size()) {
                 std::cout << ", ...";
             }
             std::cout << '\n';
@@ -516,7 +523,6 @@ int main(int argc, char* argv[]) {
             report_options.reference_value = reference_value;
             report_options.simulate = simulate;
             report_options.manual_advance = advance_passed.has_value();
-            report_options.simulation_seed = simulation_seed;
             report_options.approval_probabilities = probabilities;
             report = std::make_unique<dbacp::RunReport>(instance, state,
                                                         report_options);
@@ -564,12 +570,12 @@ int main(int argc, char* argv[]) {
                     *active_instance, state, best->plan, *advance_passed);
                 dbacp::SemesterOutcome outcome;
                 outcome.passed_ids = *advance_passed;
-                for (std::size_t k = 0; k < best->plan.course_indices.size(); ++k) {
-                    if (best->plan.assigned_periods[k] != state.current_period) {
+                for (std::size_t course = 0; course < instance.courses.size(); ++course) {
+                    if (state.passed[course] ||
+                        best->plan.assigned_periods[course] != state.current_period) {
                         continue;
                     }
-                    const std::string& id = instance.courses[
-                        best->plan.course_indices[k]].id;
+                    const std::string& id = instance.courses[course].id;
                     if (std::find(outcome.passed_ids.begin(),
                                   outcome.passed_ids.end(), id) ==
                         outcome.passed_ids.end()) {
@@ -597,7 +603,7 @@ int main(int argc, char* argv[]) {
                 std::cout << "Escenario Bernoulli: q general="
                           << *approval_probability << ", ajustes por curso="
                           << course_probabilities.size() << ", semilla="
-                          << *simulation_seed << '\n';
+                          << *seed << '\n';
                 dbacp::AcademicState current = state;
                 dbacp::InitializedSolution current_best = *best;
                 while (current.current_period <= active_instance->periods) {
@@ -605,9 +611,9 @@ int main(int argc, char* argv[]) {
                         dbacp::simulate_semester(*active_instance, current,
                                                  current_best.plan,
                                                  probabilities,
-                                                 *simulation_seed);
+                                                 *seed);
                     std::cout << "Simulación semestre " << current.current_period
-                              << " (semilla " << *simulation_seed << "):\n"
+                              << " (semilla " << *seed << "):\n"
                               << "  Aprobadas:";
                     print_ids(outcome.passed_ids);
                     std::cout << "  Reprobadas:";

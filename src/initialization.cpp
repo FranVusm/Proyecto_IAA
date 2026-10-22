@@ -24,6 +24,16 @@ struct Windows {
     std::vector<std::string> problems;
 };
 
+std::vector<std::size_t> pending_courses(const AcademicState& state) {
+    std::vector<std::size_t> courses;
+    for (std::size_t i = 0; i < state.passed.size(); ++i) {
+        if (!state.passed[i]) {
+            courses.push_back(i);
+        }
+    }
+    return courses;
+}
+
 int violation(int value, int minimum, int maximum) {
     return std::max(0, value - maximum) + std::max(0, minimum - value);
 }
@@ -32,9 +42,9 @@ int upper_excess(int value, int maximum) {
     return std::max(0, value - maximum);
 }
 
-Windows analyze_windows(const Instance& instance, const AcademicState& state,
-                        const Plan& empty_plan) {
+Windows analyze_windows(const Instance& instance, const AcademicState& state) {
     const std::size_t n = instance.courses.size();
+    const std::vector<std::size_t> pending = pending_courses(state);
     Windows windows;
     windows.earliest.assign(n, state.current_period);
     windows.latest.assign(n, instance.periods);
@@ -51,7 +61,7 @@ Windows analyze_windows(const Instance& instance, const AcademicState& state,
     }
 
     std::queue<std::size_t> ready;
-    for (const std::size_t course : empty_plan.course_indices) {
+    for (const std::size_t course : pending) {
         if (windows.indegree[course] == 0) {
             ready.push(course);
         }
@@ -70,7 +80,7 @@ Windows analyze_windows(const Instance& instance, const AcademicState& state,
             }
         }
     }
-    if (topological.size() != empty_plan.course_indices.size()) {
+    if (topological.size() != pending.size()) {
         windows.problems.push_back("los prerrequisitos pendientes contienen un ciclo");
         return windows;
     }
@@ -83,9 +93,9 @@ Windows analyze_windows(const Instance& instance, const AcademicState& state,
 
     const std::int64_t periods = instance.periods - state.current_period + 1;
     const std::int64_t pending_count =
-        static_cast<std::int64_t>(empty_plan.course_indices.size());
+        static_cast<std::int64_t>(pending.size());
     std::int64_t pending_credits = 0;
-    for (const std::size_t course : empty_plan.course_indices) {
+    for (const std::size_t course : pending) {
         pending_credits += instance.courses[course].credits;
         if (windows.earliest[course] > windows.latest[course]) {
             windows.problems.push_back("sin semestre posible por prerrequisitos: " +
@@ -109,7 +119,7 @@ Windows analyze_windows(const Instance& instance, const AcademicState& state,
         int possible_credits = 0;
         int mandatory_count = 0;
         int mandatory_credits = 0;
-        for (const std::size_t course : empty_plan.course_indices) {
+        for (const std::size_t course : pending) {
             if (windows.earliest[course] <= period && period <= windows.latest[course]) {
                 ++possible_count;
                 possible_credits += instance.courses[course].credits;
@@ -140,26 +150,20 @@ Plan construct_plan(const Instance& instance, const AcademicState& state,
                     const PheromoneMatrix* pheromone = nullptr,
                     double alpha = 0.0, double beta = 0.0) {
     Plan plan = empty_plan;
-    const std::size_t n = instance.courses.size();
-    std::vector<std::size_t> position(n, n);
-    for (std::size_t k = 0; k < plan.course_indices.size(); ++k) {
-        position[plan.course_indices[k]] = k;
-    }
-
-    std::vector<int> assigned(n, 0);
+    const std::vector<std::size_t> pending = pending_courses(state);
     std::vector<int> degree = windows.indegree;
     const std::size_t periods =
         static_cast<std::size_t>(instance.periods - state.current_period + 1);
     std::vector<int> loads(periods, 0);
     std::vector<int> counts(periods, 0);
     std::vector<std::size_t> ready;
-    for (const std::size_t course : plan.course_indices) {
+    for (const std::size_t course : pending) {
         if (degree[course] == 0) {
             ready.push_back(course);
         }
     }
 
-    for (std::size_t step = 0; step < plan.course_indices.size(); ++step) {
+    for (std::size_t step = 0; step < pending.size(); ++step) {
         std::sort(ready.begin(), ready.end(), [&](std::size_t left, std::size_t right) {
             const int left_width = windows.latest[left] - windows.earliest[left];
             const int right_width = windows.latest[right] - windows.earliest[right];
@@ -179,7 +183,7 @@ Plan construct_plan(const Instance& instance, const AcademicState& state,
 
         int earliest = windows.earliest[course];
         for (const std::size_t prerequisite : windows.predecessors[course]) {
-            earliest = std::max(earliest, assigned[prerequisite] + 1);
+            earliest = std::max(earliest, plan.assigned_periods[prerequisite] + 1);
         }
         if (earliest > windows.latest[course]) {
             throw std::logic_error("rango constructivo vacío para " +
@@ -242,8 +246,7 @@ Plan construct_plan(const Instance& instance, const AcademicState& state,
                 weights.begin(), weights.end())(random);
         }
         const int period = candidates[selected].period;
-        assigned[course] = period;
-        plan.assigned_periods[position[course]] = period;
+        plan.assigned_periods[course] = period;
         const std::size_t offset = static_cast<std::size_t>(period - state.current_period);
         loads[offset] += instance.courses[course].credits;
         ++counts[offset];
@@ -274,8 +277,7 @@ RepairResult repair_plan(const Instance& instance, const AcademicState& state,
         throw std::invalid_argument("la reparación requiere un plan completo y estructuralmente válido");
     }
 
-    std::vector<std::size_t> order(result.solution.plan.course_indices.size());
-    std::iota(order.begin(), order.end(), 0);
+    std::vector<std::size_t> order = pending_courses(state);
     std::vector<int> periods;
     for (int period = state.current_period; period <= instance.periods; ++period) {
         periods.push_back(period);
@@ -298,10 +300,10 @@ RepairResult repair_plan(const Instance& instance, const AcademicState& state,
         InitializedSolution best = result.solution;
         bool improvement = false;
 
-        for (const std::size_t k : order) {
+        for (const std::size_t course : order) {
             const FeasiblePeriodRange range = feasible_period_range(
-                instance, state, result.solution.plan, k);
-            const int old_period = result.solution.plan.assigned_periods[k];
+                instance, state, result.solution.plan, course);
+            const int old_period = result.solution.plan.assigned_periods[course];
             const std::size_t old_offset =
                 static_cast<std::size_t>(old_period - state.current_period);
             for (const int period : periods) {
@@ -315,7 +317,7 @@ RepairResult repair_plan(const Instance& instance, const AcademicState& state,
                     continue;
                 }
                 Plan candidate = result.solution.plan;
-                candidate.assigned_periods[k] = period;
+                candidate.assigned_periods[course] = period;
                 PlanEvaluation evaluation = evaluate_plan(instance, state, candidate);
                 ++result.evaluations;
                 if (better_plan(evaluation, best.evaluation)) {
@@ -392,14 +394,14 @@ InitializationResult initialize_plans(const Instance& instance,
         result.diagnostics.push_back(error.what());
         return result;
     }
-    if (empty_plan.course_indices.empty() && state.current_period == instance.periods + 1) {
+    if (pending_courses(state).empty() && state.current_period == instance.periods + 1) {
         InitializedSolution terminal{empty_plan, evaluate_plan(instance, state, empty_plan)};
         result.feasible_solutions.push_back(std::move(terminal));
         result.evaluations = 1;
         return result;
     }
 
-    const Windows windows = analyze_windows(instance, state, empty_plan);
+    const Windows windows = analyze_windows(instance, state);
     if (!windows.problems.empty()) {
         result.diagnostics = windows.problems;
         return result;
@@ -455,7 +457,7 @@ Plan construct_ant_plan(const Instance& instance, const AcademicState& state,
         }
     }
     const Plan empty_plan = make_empty_plan(instance, state);
-    const Windows windows = analyze_windows(instance, state, empty_plan);
+    const Windows windows = analyze_windows(instance, state);
     if (!windows.problems.empty()) {
         throw std::invalid_argument(windows.problems.front());
     }

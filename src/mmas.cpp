@@ -28,16 +28,11 @@ void update_pheromone(const Instance& instance, const AcademicState& state,
                       double evaporation, MmasResult& result) {
     const InitializedSolution& best = *result.best_feasible;
     const double deposit = 1.0 / best.evaluation.maximum_load;
-    std::vector<int> assigned(instance.courses.size(), -1);
-    for (std::size_t k = 0; k < best.plan.course_indices.size(); ++k) {
-        const std::size_t course = best.plan.course_indices[k];
-        assigned[course] = best.plan.assigned_periods[k];
-    }
     for (std::size_t course = 0; course < instance.courses.size(); ++course) {
         for (int period = state.current_period; period <= instance.periods; ++period) {
             double& tau = result.pheromone[course][static_cast<std::size_t>(period)];
             tau *= 1.0 - evaporation;
-            if (period == assigned[course]) {
+            if (period == best.plan.assigned_periods[course]) {
                 tau += deposit;
             }
             tau = std::clamp(tau, result.tau_min, result.tau_max);
@@ -68,11 +63,13 @@ MmasResult run_mmas(const Instance& instance, const AcademicState& state,
     result.evaluations = initial.evaluations;
     result.best_infeasible = initial.best_infeasible;
     for (const auto& solution : initial.feasible_solutions) {
-        if (!result.best_feasible || better_plan(solution.evaluation,
-                                                 result.best_feasible->evaluation)) {
-            result.best_feasible = solution;
+        if (!result.best_initial_feasible ||
+            better_plan(solution.evaluation,
+                        result.best_initial_feasible->evaluation)) {
+            result.best_initial_feasible = solution;
         }
     }
+    result.best_feasible = result.best_initial_feasible;
 
     // Un prechequeo fallido ya prueba que este estado viola una condición
     // necesaria; no se construyen hormigas para él.
@@ -81,7 +78,9 @@ MmasResult run_mmas(const Instance& instance, const AcademicState& state,
         return result;
     }
     if (state.current_period > instance.periods ||
-        (result.best_feasible && result.best_feasible->plan.course_indices.empty())) {
+        (result.best_feasible &&
+         std::all_of(state.passed.begin(), state.passed.end(),
+                     [](std::uint8_t passed) { return passed != 0; }))) {
         return result;
     }
 

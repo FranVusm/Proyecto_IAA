@@ -20,6 +20,7 @@ struct MmasOptions {
 };
 
 struct MmasResult {
+    std::optional<InitializedSolution> best_initial_feasible;
     std::optional<InitializedSolution> best_feasible;
     std::optional<InitializedSolution> best_infeasible;
     std::vector<std::string> diagnostics;

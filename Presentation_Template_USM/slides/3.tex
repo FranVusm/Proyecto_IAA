@@ -1,0 +1,27 @@
+\begin{frame}{Restricciones y evaluación}
+  \small
+  \begin{block}{Restricciones: qué se exige y cómo se cumple}
+    \footnotesize
+    \begin{tabular}{@{}p{0.29\textwidth}p{0.65\textwidth}@{}}
+      \toprule
+      \textbf{Restricción} & \textbf{Tratamiento en el algoritmo} \\
+      \midrule
+      Asignación única y horizonte & Una posición por curso pendiente;
+        el evaluador exige $x_i\in\{t,\ldots,T\}$. \\
+      Prerrequisitos & Se construye en períodos posteriores a los requisitos;
+        los cambios se validan antes de aceptarlos. \\
+      Créditos por semestre & $L_{\min}\leq L_p\leq L_{\max}$:
+        se consideran al construir, se reparan y se validan por período. \\
+      Cursos por semestre & $N_{\min}\leq N_p\leq N_{\max}$:
+        se aplica el mismo proceso al número de cursos. \\
+      \bottomrule
+    \end{tabular}
+  \end{block}
+
+  \begin{exampleblock}{Evaluación de planes factibles}
+    Primero, menor $M(X_t)=\max_{p\in P_t}L_p(X_t)$;
+    en empate, menor error de balance:
+    \[E(X_t)=\sum_{p\in P_t}\bigl(L_p(X_t)-AVG_t\bigr)^2,
+      \qquad AVG_t=\frac{\sum_{i\in U_t}r_i}{|P_t|}.\]
+  \end{exampleblock}
+\end{frame}

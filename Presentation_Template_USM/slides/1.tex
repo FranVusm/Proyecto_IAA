@@ -1,0 +1,32 @@
+% Primera diapositiva de contenido: línea temporal del algoritmo.
+\begin{frame}{Flujo del algoritmo}
+  \centering
+  \begin{tikzpicture}[
+    paso/.style={draw=usmBlue, thick, rounded corners=3pt,
+      fill=usmBlue!9, text width=2.15cm, minimum height=1.9cm,
+      align=center, inner sep=4pt},
+    flecha/.style={-{Stealth[length=2.5mm]}, thick, draw=usmYellow},
+    node distance=0.34cm
+  ]
+    \node[paso] (instancia) {\textbf{Instancia}\\[2mm]\scriptsize Lectura de datos};
+    \node[paso, right=of instancia] (conversion) {\textbf{Conversión}\\[2mm]\scriptsize Estado y vector $X_t$};
+    \node[paso, right=of conversion] (inicio) {\textbf{Inicialización}\\[2mm]\scriptsize Greedy y reparación};
+    \node[paso, right=of inicio] (mmas) {\textbf{Búsqueda MMAS}\\[2mm]\scriptsize Hormigas y feromonas};
+    \node[paso, right=of mmas] (resultado) {\textbf{Resultado}\\[2mm]\scriptsize Plan o diagnóstico};
+
+    \draw[flecha] (instancia.east) -- (conversion.west);
+    \draw[flecha] (conversion.east) -- (inicio.west);
+    \draw[flecha] (inicio.east) -- (mmas.west);
+    \draw[flecha] (mmas.east) -- (resultado.west);
+  \end{tikzpicture}
+
+  \vspace{0.6cm}
+  \begin{block}{Qué ocurre entre las etapas}
+    Con la instancia, $t$ y los aprobados se crea el estado y una plantilla
+    de cursos pendientes. La inicialización asigna semestres para obtener
+    $X_t$; MMAS intenta mejorarlo.
+  \end{block}
+  \vspace{0.15cm}
+  {\footnotesize Tras cada semestre se actualizan los cursos aprobados y, si
+  quedan pendientes, se vuelve a planificar.}
+\end{frame}

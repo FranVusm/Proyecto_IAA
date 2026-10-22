@@ -9,7 +9,7 @@ namespace dbacp {
 SemesterOutcome simulate_semester(
     const Instance& instance, const AcademicState& state, const Plan& plan,
     const std::vector<double>& approval_probabilities,
-    std::uint64_t scenario_seed) {
+    std::uint64_t seed) {
     if (approval_probabilities.size() != instance.courses.size()) {
         throw std::invalid_argument("se requiere un q_i por cada curso de la instancia");
     }
@@ -30,29 +30,24 @@ SemesterOutcome simulate_semester(
 
     // Consumir una muestra por cada par (período, curso), incluso si ese
     // curso no se cursa allí, hace que el escenario no dependa del plan.
-    std::mt19937_64 random(scenario_seed);
+    std::mt19937_64 random(seed);
     SemesterOutcome outcome;
     for (int period = 1; period <= state.current_period; ++period) {
-        std::size_t position = 0;
         for (std::size_t course = 0; course < instance.courses.size(); ++course) {
             const std::uint64_t bits = random();
             if (period != state.current_period) {
                 continue;
             }
-            if (position < plan.course_indices.size() &&
-                plan.course_indices[position] == course) {
-                if (plan.assigned_periods[position] == period) {
-                    // Los 53 bits altos producen U en [0,1); 1[U < q_i]
-                    // tiene distribución Bernoulli(q_i).
-                    const double uniform = std::ldexp(
-                        static_cast<double>(bits >> 11), -53);
-                    if (uniform < approval_probabilities[course]) {
-                        outcome.passed_ids.push_back(instance.courses[course].id);
-                    } else {
-                        outcome.failed_ids.push_back(instance.courses[course].id);
-                    }
+            if (!state.passed[course] && plan.assigned_periods[course] == period) {
+                // Los 53 bits altos producen U en [0,1); 1[U < q_i]
+                // tiene distribución Bernoulli(q_i).
+                const double uniform = std::ldexp(
+                    static_cast<double>(bits >> 11), -53);
+                if (uniform < approval_probabilities[course]) {
+                    outcome.passed_ids.push_back(instance.courses[course].id);
+                } else {
+                    outcome.failed_ids.push_back(instance.courses[course].id);
                 }
-                ++position;
             }
         }
     }

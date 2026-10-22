@@ -20,7 +20,7 @@ search=("$fixture" --mmas --seed 1 --attempts 2 --repair-steps 2
         --rcl 1 --init-budget 2 --eval-budget 10 --ants 2 --alpha 1
         --beta 1 --evaporation 0.2 --tau-min-ratio 0.05
         --results-dir "$results_dir")
-common=("${search[@]}" --simulate --approval-prob 0 --simulation-seed 7)
+common=("${search[@]}" --simulate --approval-prob 0)
 
 set +e
 output=$(./min_max "${common[@]}" --period-cap 3 2>&1)
@@ -36,6 +36,10 @@ if [[ $status -ne 3 || $output != *"Extensión activada: T=1, cota=3"* ||
 fi
 report_path=${output##*Reporte guardado: }
 if [[ ! -f $report_path ]] ||
+   [[ $output != *"Mejor valor de inicialización: carga máxima="* ]] ||
+   [[ $output != *"semilla=1"* ]] ||
+   ! grep -q 'Mejor valor de inicialización: carga máxima=' "$report_path" ||
+   ! grep -q 'Semilla de búsqueda y simulación: 1' "$report_path" ||
    ! grep -q '### Vector X_t' "$report_path" ||
    ! grep -q '## Resultado académico del semestre 2' "$report_path" ||
    ! grep -q 'Evaluaciones acumuladas:' "$report_path"; then
@@ -43,12 +47,24 @@ if [[ ! -f $report_path ]] ||
     exit 1
 fi
 
-output=$(./min_max "${search[@]}" --simulate --approval-prob 0.5 \
-         --simulation-seed 3 --period-cap 3 2>&1)
+search_seed3=("${search[@]}")
+search_seed3[3]=3
+output=$(./min_max "${search_seed3[@]}" --simulate --approval-prob 0.5 \
+         --period-cap 3 2>&1)
 if [[ $output != *"Extensión activada: T=1, cota=3"* ||
       $output != *"Trayectoria completada en el semestre 2"* ]]; then
     echo "Un curso aprobado en la fase adicional debe completar la trayectoria" >&2
     echo "$output" >&2
+    exit 1
+fi
+
+set +e
+output=$(./min_max "${search[@]}" --simulate --approval-prob 0.5 \
+         --simulation-seed 7 2>&1)
+status=$?
+set -e
+if [[ $status -ne 1 || $output != *"opción inválida o incompleta: --simulation-seed"* ]]; then
+    echo "Una ejecución debe usar solo --seed" >&2
     exit 1
 fi
 
@@ -104,9 +120,14 @@ fi
 output=$(./min_max "$fixture" --init --seed 1 --attempts 2 \
          --repair-steps 2 --rcl 1 --eval-budget 10 --reference-value 1 \
          --results-dir "$results_dir" 2>&1)
-if [[ $output != *"Mejor plan factible"* ||
+if [[ $output != *"Mejor plan inicial: carga máxima="* ||
       $output != *"Reporte guardado:"* ]]; then
     echo "La inicialización estática también debe guardar su solución" >&2
+    exit 1
+fi
+report_path=${output##*Reporte guardado: }
+if ! grep -q 'Mejor valor de inicialización: carga máxima=' "$report_path"; then
+    echo "El reporte de --init debe guardar el valor del mejor plan inicial" >&2
     exit 1
 fi
 if [[ $(tail -n 1 "$results_dir/resultados.csv") != *',1,1,0.000000,'* ]]; then

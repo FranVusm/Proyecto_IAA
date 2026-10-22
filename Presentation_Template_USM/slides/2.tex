@@ -1,0 +1,38 @@
+\begin{frame}{Lectura y representación}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.47\textwidth}
+      \begin{block}{Instancias usadas}
+        \begin{itemize}
+          \item BACP8
+          \item BACP10
+          \item BACP12
+        \end{itemize}
+      \end{block}
+      \begin{exampleblock}{Estado académico}
+        \small
+        En el semestre actual $t$ se consultan:
+        \begin{itemize}
+          \item Estado \texttt{passed[i]}: 1 si el curso fue aprobado; 0 si sigue pendiente.
+          \item Plan \texttt{assigned\_periods[i]}: semestre del curso $i$.
+        \end{itemize}
+      \end{exampleblock}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \begin{block}{Representación}
+        \small
+        $A_t$: aprobados; $U_t=C\setminus A_t$: pendientes.\\[1mm]
+        \[X_t=(x_i)_{i\in U_t},\qquad x_i\in\{t,\ldots,T\}.\]
+        El vector del código tiene $|C|$ posiciones: para $i\in U_t$,
+        \texttt{assigned\_periods[i]} guarda $x_i$.\\[2mm]
+        Ejemplo: curso $i=2$ y valor $x_i=3$ significa que el curso 2
+        quedó planificado para el semestre 3. El 0 indica aprobado o
+        pendiente aún sin asignar; \texttt{passed[i]} los distingue.
+      \end{block}
+      % \begin{alertblock}{Decisión de diseño}
+      %   El vector da una sola asignación por curso y permite asociar feromona
+      %   a cada par \emph{(curso, semestre)}. Una matriz binaria exigiría
+      %   controlar además una asignación única por fila.
+      % \end{alertblock}
+    \end{column}
+  \end{columns}
+\end{frame}

@@ -40,6 +40,11 @@ int main() {
                   dbacp::evaluate_plan(instance, state,
                                        result.best_feasible->plan).feasible,
               "MMAS conserva un plan validado independientemente");
+        check(result.best_initial_feasible.has_value() &&
+                  result.best_initial_feasible->evaluation.feasible &&
+                  !dbacp::better_plan(result.best_initial_feasible->evaluation,
+                                      result.best_feasible->evaluation),
+              "se conserva el valor inicial y MMAS no empeora el mejor plan");
         check(result.initialization_evaluations <= 20 &&
                   result.evaluations <= 100 &&
                   result.evaluations > result.initialization_evaluations &&
@@ -130,6 +135,7 @@ int main() {
             bacp12, bacp12_state,
             {short_start, 5, 1.0, 2.0, 0.2, 0.05, 5000});
         check(found_by_search.best_feasible.has_value() &&
+                  !found_by_search.best_initial_feasible.has_value() &&
                   found_by_search.ants_built > 0 &&
                   dbacp::evaluate_plan(bacp12, bacp12_state,
                                        found_by_search.best_feasible->plan).feasible,

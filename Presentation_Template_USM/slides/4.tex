@@ -1,0 +1,40 @@
+\begin{frame}{Inicialización greedy aleatorizada}
+  \small
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.55\textwidth}
+      \begin{block}{Construcción de planes iniciales}
+        \begin{enumerate}
+          \item Crear una plantilla con cursos pendientes y semestres sin asignar.
+          \item Verificar condiciones necesarias y ventanas de prerrequisitos.
+          \item Sortear un curso disponible y un semestre prometedor (RCL).
+          \item Evaluar, reparar y conservar planes factibles distintos.
+        \end{enumerate}
+      \end{block}
+    \end{column}
+    \begin{column}{0.41\textwidth}
+      \begin{exampleblock}{Feromona inicial de MMAS}
+        \[M=\max_{p\in P_t}L_p(X^{\star})\]
+        \[\tau_{\max}=\frac{1}{\rho M},\qquad
+          \tau_{\min}=\gamma\,\tau_{\max}.\]
+        \begin{itemize}
+          \item $X^{\star}$: mejor plan factible inicial.
+          \item $L_p$: créditos del semestre $p$; $M$: mayor carga.
+          \item $\rho$: evaporación; $\gamma$: \texttt{tau-min-ratio}.
+        \end{itemize}
+        Todas las feromonas empiezan en $\tau_{\max}$.
+      \end{exampleblock}
+      % \begin{exampleblock}{Efecto esperado}
+      %   La parte greedy guía la construcción; el azar aporta diversidad
+      %   para iniciar la búsqueda MMAS.
+      % \end{exampleblock}
+      % \begin{alertblock}{Alternativas descartadas}
+      %   Azar puro: muchas violaciones.\\[1mm]
+      %   Greedy determinista: poca diversidad.\\[1mm]
+      %   Método exacto: mayor costo para este hito.
+      % \end{alertblock}
+    \end{column}
+  \end{columns}
+  \vspace{0.2cm}
+  {\footnotesize El mejor plan inicial se conserva como referencia; cada hormiga
+  construye su propio plan desde un vector sin asignaciones.}
+\end{frame}

@@ -34,13 +34,13 @@ int main() {
         const dbacp::AcademicState state = dbacp::make_state(instance, 1, {});
         dbacp::Plan damaged = dbacp::make_empty_plan(instance, state);
         damaged.assigned_periods = {1, 2, 2, 3};  // Cargas 4, 5, 1.
-        const std::vector<std::size_t> original_courses = damaged.course_indices;
+        const std::size_t original_size = damaged.assigned_periods.size();
         std::mt19937_64 random(1);
         const dbacp::RepairResult repaired =
             dbacp::repair_plan(instance, state, damaged, random, 20, 500);
         check(repaired.solution.evaluation.feasible, "la reparación alcanza factibilidad");
-        check(repaired.solution.plan.course_indices == original_courses,
-              "la reparación conserva todos los cursos sin duplicarlos");
+        check(repaired.solution.plan.assigned_periods.size() == original_size,
+              "la reparación conserva una posición por curso");
         check(repaired.solution.evaluation.structural_violations == 0,
               "la reparación conserva los prerrequisitos");
         check(dbacp::evaluate_plan(instance, state, repaired.solution.plan).feasible,
@@ -63,7 +63,8 @@ int main() {
             swap_instance, swap_state, swap_plan, random, 10, 100);
         check(swapped.solution.evaluation.feasible &&
                   swapped.solution.evaluation.maximum_load == 5 &&
-                  swapped.solution.plan.course_indices == swap_plan.course_indices,
+                  swapped.solution.plan.assigned_periods.size() ==
+                      swap_plan.assigned_periods.size(),
               "intercambio de cursos repara un caso sin movimiento individual útil");
 
         dbacp::Plan bad_count = swap_plan;
@@ -88,8 +89,8 @@ int main() {
             impossible, impossible_state, impossible_plan, random, 20, 500);
         check(!failed.solution.evaluation.feasible &&
                   failed.solution.evaluation.structural_violations == 0 &&
-                  failed.solution.plan.course_indices ==
-                      impossible_plan.course_indices,
+                  failed.solution.plan.assigned_periods.size() ==
+                      impossible_plan.assigned_periods.size(),
               "la reparación no declara factible un estado imposible");
         const dbacp::InitializationResult blocked = dbacp::initialize_plans(
             impossible, impossible_state, {1, 5, 20, 2, 500});
@@ -121,8 +122,9 @@ int main() {
         for (const auto& solution : initialized.feasible_solutions) {
             check(solution.evaluation.feasible &&
                       solution.evaluation.structural_violations == 0 &&
-                      solution.plan.course_indices ==
-                          std::vector<std::size_t>({1, 2, 3}),
+                      solution.plan.assigned_periods.size() == 4 &&
+                      solution.plan.assigned_periods[0] == 0 &&
+                      solution.plan.assigned_periods[1] >= 2,
                   "cada plan dinámico conserva cursos pendientes y prerrequisitos");
             check(dbacp::evaluate_plan(dynamic_instance, dynamic,
                                        solution.plan).feasible,
@@ -139,7 +141,7 @@ int main() {
         const dbacp::AcademicState last_period =
             dbacp::make_state(instance, 3, {"A", "B"});
         dbacp::Plan last_plan = dbacp::make_empty_plan(instance, last_period);
-        last_plan.assigned_periods = {3, 3};
+        last_plan.assigned_periods = {0, 0, 3, 3};
         check(dbacp::evaluate_plan(instance, last_period, last_plan).feasible,
               "último semestre cursable");
         const dbacp::AcademicState last_failed =

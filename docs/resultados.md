@@ -18,12 +18,15 @@ instancia sin algoritmo ni para argumentos rechazados antes de iniciar.
 
 - Identificación de la instancia, horizonte original, cota opcional, estado
   inicial y parámetros efectivos del algoritmo.
-- Semilla de búsqueda, semilla del escenario y probabilidades `q_i` por curso
+- Semilla única de búsqueda y simulación, y probabilidades `q_i` por curso
   cuando se simula.
 - Sistema operativo, CPU, RAM, compilador y cantidad de hilos usados.
 - Una sección por planificación con `t`, `A_t`, `U_t`, horizonte, límites
-  activos, evaluaciones, tiempo, diagnósticos, función objetivo, vector
-  `X_t` como pares curso–semestre y créditos/cantidad de cursos por semestre.
+  activos, evaluaciones, tiempo, diagnósticos, mejor valor factible obtenido
+  por la inicialización (carga máxima y `E`), función objetivo final, vector
+  `X_t` como índice de curso, identificador y semestre (`assigned_periods[i]`),
+  además de créditos/cantidad de cursos por semestre. Los cursos aprobados
+  conservan 0 en memoria y no aparecen en la tabla de pendientes.
 - Una sección por semestre ejecutado con cursos cursados, `q_i`, resultados
   `Y_it`, aprobados, reprobados, `A_{t+1}` y `U_{t+1}`.
 - Resumen con estado final, evaluaciones acumuladas, tiempo de búsqueda y

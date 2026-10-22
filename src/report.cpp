@@ -203,7 +203,7 @@ RunReport::RunReport(const Instance& instance, const AcademicState& initial_stat
             << "; A_t={" << list_ids(instance, initial_state.passed, true)
             << "}; U_t={" << list_ids(instance, initial_state.passed, false)
             << "}\n"
-            << "- Semilla del algoritmo: " << options_.seed << "\n"
+            << "- Semilla de búsqueda y simulación: " << options_.seed << "\n"
             << "- Referencia f*: ";
     if (options_.reference_value) {
         output_ << *options_.reference_value << " (entregada por CLI)";
@@ -231,8 +231,7 @@ RunReport::RunReport(const Instance& instance, const AcademicState& initial_stat
                 << " |\n| tau-min-ratio | " << options_.mmas->tau_min_ratio << " |\n";
     }
     if (options_.simulate) {
-        output_ << "| simulation-seed | " << *options_.simulation_seed << " |\n"
-                << "\nProbabilidades q_i (orden de la instancia):\n\n"
+        output_ << "\nProbabilidades q_i (orden de la instancia):\n\n"
                 << "| Curso | q_i |\n| --- | ---: |\n";
         for (std::size_t i = 0; i < instance.courses.size(); ++i) {
             output_ << "| " << markdown(instance.courses[i].id) << " | "
@@ -258,6 +257,7 @@ RunReport::RunReport(const Instance& instance, const AcademicState& initial_stat
 void RunReport::record_search(
     const Instance& instance, const AcademicState& state, const std::string& phase,
     const std::optional<InitializedSolution>& best,
+    const std::optional<InitializedSolution>& best_initial,
     const std::optional<InitializedSolution>& best_infeasible,
     const std::vector<std::string>& diagnostics, std::size_t evaluations,
     std::size_t initialization_evaluations, std::size_t ants,
@@ -290,7 +290,15 @@ void RunReport::record_search(
             << "- Hormigas: " << ants << "; iteraciones: " << iterations << "\n"
             << "- Tiempo de búsqueda: " << std::fixed << std::setprecision(6)
             << seconds << " s\n"
-            << "- Plan factible validado: " << (best ? "sí" : "no") << "\n";
+            << "- Plan factible validado: " << (best ? "sí" : "no") << "\n"
+            << "- Mejor valor de inicialización: ";
+    if (best_initial) {
+        output_ << "carga máxima=" << best_initial->evaluation.maximum_load
+                << "; E=" << best_initial->evaluation.squared_balance_error
+                << "\n";
+    } else {
+        output_ << "sin plan factible inicial\n";
+    }
     if (!diagnostics.empty()) {
         output_ << "- Diagnósticos:\n";
         for (const auto& diagnostic : diagnostics) {
@@ -307,13 +315,15 @@ void RunReport::record_search(
                 output_ << "  - " << markdown(violation) << "\n";
             }
             output_ << "\n### Vector del mejor intento infactible\n\n"
-                    << "| Curso pendiente | Créditos | Semestre asignado |\n"
-                    << "| --- | ---: | ---: |\n";
-            for (std::size_t k = 0; k < best_infeasible->plan.course_indices.size(); ++k) {
-                const std::size_t course = best_infeasible->plan.course_indices[k];
-                output_ << "| " << markdown(instance.courses[course].id)
+                    << "| Índice i | Curso pendiente | Créditos | Semestre asignado |\n"
+                    << "| ---: | --- | ---: | ---: |\n";
+            for (std::size_t course = 0; course < instance.courses.size(); ++course) {
+                if (state.passed[course]) {
+                    continue;
+                }
+                output_ << "| " << course << " | " << markdown(instance.courses[course].id)
                         << " | " << instance.courses[course].credits
-                        << " | " << best_infeasible->plan.assigned_periods[k]
+                        << " | " << best_infeasible->plan.assigned_periods[course]
                         << " |\n";
             }
         }
@@ -335,22 +345,26 @@ void RunReport::record_search(
         output_ << "sin calcular; falta referencia para este estado\n";
     }
     output_ << "\n### Vector X_t\n\n"
-            << "| Curso pendiente | Créditos | Semestre asignado |\n"
-            << "| --- | ---: | ---: |\n";
-    for (std::size_t k = 0; k < best->plan.course_indices.size(); ++k) {
-        const std::size_t course = best->plan.course_indices[k];
-        output_ << "| " << markdown(instance.courses[course].id) << " | "
+            << "`assigned_periods[i]` es el período del curso `i`; los cursos aprobados "
+               "conservan 0 y se omiten de la tabla de pendientes.\n\n"
+            << "| Índice i | Curso pendiente | Créditos | Semestre asignado |\n"
+            << "| ---: | --- | ---: | ---: |\n";
+    for (std::size_t course = 0; course < instance.courses.size(); ++course) {
+        if (state.passed[course]) {
+            continue;
+        }
+        output_ << "| " << course << " | " << markdown(instance.courses[course].id) << " | "
                 << instance.courses[course].credits << " | "
-                << best->plan.assigned_periods[k] << " |\n";
+                << best->plan.assigned_periods[course] << " |\n";
     }
     output_ << "\n### Carga por semestre\n\n"
             << "| Semestre | Créditos | Cursos | Identificadores |\n"
             << "| ---: | ---: | ---: | --- |\n";
     for (int period = state.current_period; period <= instance.periods; ++period) {
         std::vector<std::string> ids;
-        for (std::size_t k = 0; k < best->plan.course_indices.size(); ++k) {
-            if (best->plan.assigned_periods[k] == period) {
-                ids.push_back(instance.courses[best->plan.course_indices[k]].id);
+        for (std::size_t course = 0; course < instance.courses.size(); ++course) {
+            if (!state.passed[course] && best->plan.assigned_periods[course] == period) {
+                ids.push_back(instance.courses[course].id);
             }
         }
         const std::size_t offset = static_cast<std::size_t>(period - state.current_period);
@@ -369,11 +383,10 @@ void RunReport::record_semester(const Instance& instance, const AcademicState& s
             << "\n- Cursos cursados y resultados:\n\n"
             << "| Curso | q_i | Y_it | Resultado |\n"
             << "| --- | ---: | ---: | --- |\n";
-    for (std::size_t k = 0; k < plan.course_indices.size(); ++k) {
-        if (plan.assigned_periods[k] != state.current_period) {
+    for (std::size_t course = 0; course < instance.courses.size(); ++course) {
+        if (state.passed[course] || plan.assigned_periods[course] != state.current_period) {
             continue;
         }
-        const std::size_t course = plan.course_indices[k];
         const std::string& id = instance.courses[course].id;
         const bool passed = std::find(outcome.passed_ids.begin(),
                                       outcome.passed_ids.end(), id) != outcome.passed_ids.end();

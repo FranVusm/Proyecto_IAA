@@ -20,6 +20,6 @@ struct SemesterOutcome {
 SemesterOutcome simulate_semester(
     const Instance& instance, const AcademicState& state, const Plan& plan,
     const std::vector<double>& approval_probabilities,
-    std::uint64_t scenario_seed);
+    std::uint64_t seed);
 
 }  // namespace dbacp

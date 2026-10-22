@@ -66,8 +66,8 @@ ese acuerdo todavía debe confirmarse para los experimentos finales.
 El modo `--mmas` puede combinarse con `--simulate` o
 `--advance-passed`. Cada nuevo estado académico ejecuta MMAS de nuevo y
 reinicia sus feromonas, porque cambian $U_t$ y $P_t$. El escenario de
-aprobación mantiene su propia semilla para que los resultados académicos
-sean comparables.
+aprobación usa el mismo valor de `--seed` que la búsqueda para que los
+resultados académicos sean comparables entre algoritmos.
 
 ## Cota experimental de semestres
 

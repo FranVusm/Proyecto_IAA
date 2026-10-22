@@ -43,7 +43,7 @@ int main() {
               "la simulación alimenta la transición y conserva el reprobado");
 
         dbacp::Plan replanned = dbacp::make_empty_plan(instance, next);
-        replanned.assigned_periods = {2, 3, 3};
+        replanned.assigned_periods = {0, 2, 3, 3};
         const dbacp::SemesterOutcome second = dbacp::simulate_semester(
             instance, next, replanned, {1.0, 1.0, 0.0, 0.0}, 17);
         check(second.passed_ids == std::vector<std::string>({"B"}) &&

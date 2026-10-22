@@ -18,7 +18,7 @@ Material para una exposición de **máximo 5 minutos**: unos 4 minutos y 20 segu
 
 - El lector almacena cursos, créditos, períodos, límites y prerrequisitos de BACP8, BACP10 y BACP12.
 - `AcademicState` separa el período actual `t` y los cursos aprobados `A_t` de los datos de la instancia.
-- El plan es `X_t = (x_i)_{i∈U_t}`: una posición por curso pendiente y un período asignado por posición.
+- El plan matemático es `X_t = (x_i)_{i∈U_t}`. En el código, `assigned_periods[i]` tiene una posición fija por curso de la instancia; para `i∈U_t` guarda `x_i`, y los aprobados conservan 0.
 - Una decisión `(curso, período)` corresponde directamente a una entrada de la matriz de feromonas.
 
 **Para decir:** «El vector garantiza una sola asignación por curso pendiente y permite reconstruir cargas y prerrequisitos. Una matriz binaria curso por período exigiría controlar adicionalmente que cada fila tenga exactamente una asignación. El lector conserva las instancias originales e informa sus irregularidades de formato».
@@ -29,14 +29,14 @@ Material para una exposición de **máximo 5 minutos**: unos 4 minutos y 20 segu
 
 **En la diapositiva**
 
-| Componente | Objetivo y efecto esperado |
+| Restricción | Cómo se cumple |
 | --- | --- |
-| Codificación estructural | Asignar dentro de `t…T` y respetar prerrequisitos al construir o mover cursos; evita candidatos estructuralmente inválidos. |
-| Reparación | Mover o intercambiar cursos entre períodos para corregir límites de créditos y cantidad de cursos. |
-| Penalización auxiliar | Medir `V_L + V_N` para orientar la reparación de planes todavía infactibles. |
-| `evaluate_plan` | Comprobar todas las restricciones de **cada** período y calcular la calidad de planes factibles. |
+| Asignación única y horizonte | El vector contiene una posición fija por curso; `evaluate_plan` exige un semestre entre `t` y `T` para cada pendiente y 0 para cada aprobado. |
+| Prerrequisitos | La construcción usa períodos posteriores a los requisitos; los cambios se validan antes de aceptarse. |
+| Créditos por semestre | La heurística considera `L_min ≤ L_p ≤ L_max`; reparación y evaluación final corrigen y verifican cada período. |
+| Cursos por semestre | Se aplica el mismo proceso a `N_min ≤ N_p ≤ N_max`. |
 
-**Para decir:** «Las restricciones duras son precedencia, horizonte, créditos y cantidad de cursos. Un plan infactible nunca supera a uno factible. Entre planes factibles se minimiza primero la carga máxima y, solo en empate, el error cuadrático de balance. No se mezclan ambos objetivos con pesos arbitrarios».
+**Para decir:** «Primero se exige que el plan sea factible. Los prerrequisitos y el horizonte se controlan al construir; créditos y cantidad se consideran al elegir y pueden corregirse mediante reparación. Entre planes factibles se minimiza la mayor carga de créditos. Solo si dos tienen la misma carga máxima, se compara la medida secundaria `E(X_t)`, la suma de desviaciones cuadráticas respecto de los créditos promedio por período. Durante la reparación, `V_L + V_N` orienta planes aún infactibles; no se añade al objetivo final».
 
 **Alternativa descartada:** una penalización única sumada al objetivo necesitaría calibrar pesos y podría cambiar la prioridad matemática del modelo.
 
@@ -46,16 +46,17 @@ Material para una exposición de **máximo 5 minutos**: unos 4 minutos y 20 segu
 
 **En la diapositiva**
 
-1. Prechequear condiciones necesarias de factibilidad del estado.
-2. Elegir cursos disponibles, priorizando ventanas de períodos estrechas.
-3. Seleccionar aleatoriamente entre los mejores candidatos de una lista restringida (`RCL`).
-4. Completar, evaluar y reparar el plan; conservar solo soluciones factibles distintas.
+1. Crear el vector indexado por curso con ceros; `passed[i]` distingue aprobados de pendientes aún sin asignar.
+2. Prechequear condiciones necesarias y calcular ventanas de períodos según prerrequisitos.
+3. Elegir cursos disponibles de una lista restringida (`RCL`) y sortear un período bien clasificado por violaciones y carga.
+4. Completar, evaluar y reparar varios planes; conservar solo soluciones factibles distintas.
+5. Elegir el mejor plan inicial, con carga máxima `M`, para calcular `τ_max = 1/(ρM)` y `τ_min = tau_min_ratio · τ_max`. Todas las feromonas empiezan en `τ_max`.
 
-**Para decir:** «El criterio greedy dirige la construcción hacia asignaciones prometedoras; la aleatorización aporta diversidad para iniciar MMAS. Los movimientos y los intercambios de reparación conservan horizonte y prerrequisitos. Si se agota el presupuesto sin hallar un plan válido, el programa lo informa sin afirmar que el problema sea matemáticamente infactible».
+**Para decir:** «El criterio greedy dirige la construcción hacia asignaciones prometedoras y el azar genera varios planes. MMAS guarda el mejor inicial y usa su carga máxima para fijar los límites de feromona. Cada hormiga construye después un plan nuevo desde cero; la primera iteración todavía parte de feromonas uniformes. Si se agota el presupuesto sin hallar un plan válido, eso no demuestra infactibilidad matemática».
 
 **Alternativas consideradas:** la asignación completamente aleatoria genera muchas violaciones estructurales; el greedy determinista produce poca diversidad; la búsqueda exacta puede certificar infactibilidad, pero añade un costo y una complejidad mayores para este avance.
 
-**Código:** [`initialization.cpp`](../src/initialization.cpp).
+**Código:** [`initialization.cpp`](../src/initialization.cpp), [`mmas.cpp`](../src/mmas.cpp).
 
 ## 5. Búsqueda MMAS y replanificación — 60 segundos
 
@@ -80,8 +81,6 @@ Material para una exposición de **máximo 5 minutos**: unos 4 minutos y 20 segu
 | BACP10 | 16 | 14 |
 | BACP12 | 21 | 18 |
 
-- `make test`: pasan las cinco suites (lector, plan, inicialización, simulación y MMAS).
-- Compilación verificada en Ubuntu con `g++` y `-std=c++17`.
 - Resultados **demostrativos**: las dos columnas usan configuraciones y presupuestos distintos; no constituyen una comparación controlada ni prueban optimalidad.
 
 **Para decir:** «El avance cubre los componentes exigidos y además una búsqueda funcional y su evaluación. El siguiente trabajo es acordar escenarios, automatizar las ejecuciones y analizar resultados reproducibles. En BACP12 se mantiene abierta la discrepancia entre referencias de 17 y 18 créditos».
@@ -108,7 +107,7 @@ En la salida, señalar `MMAS t=1`, el número de evaluaciones, `Mejor plan MMAS:
   --init-budget 500 --eval-budget 5000 \
   --ants 5 --alpha 1 --beta 2 \
   --evaporation 0.2 --tau-min-ratio 0.05 \
-  --simulate --approval-prob 0.8 --simulation-seed 7
+  --simulate --approval-prob 0.8
 ```
 
 ## Referencias internas para preguntas

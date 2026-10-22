@@ -29,10 +29,8 @@ int main() {
 
         const dbacp::AcademicState initial = dbacp::make_state(instance, 1, {});
         dbacp::Plan balanced = dbacp::make_empty_plan(instance, initial);
-        check(balanced.course_indices == std::vector<std::size_t>({0, 1, 2, 3}),
-              "el vector inicial contiene U_t en orden de instancia");
         check(balanced.assigned_periods == std::vector<int>({0, 0, 0, 0}),
-              "el vector comienza sin asignaciones");
+              "el vector tiene una posición por curso y comienza sin asignaciones");
 
         balanced.assigned_periods = {1, 2, 3, 3};  // Cargas 4, 3, 3.
         const dbacp::PlanEvaluation good =
@@ -89,10 +87,10 @@ int main() {
                                   excess),
               "un plan estructuralmente inválido nunca mejora uno válido");
 
-        dbacp::Plan duplicated = balanced;
-        duplicated.course_indices[3] = 0;
-        check(!dbacp::evaluate_plan(instance, initial, duplicated).feasible,
-              "curso duplicado y curso omitido no forman X_t");
+        dbacp::Plan wrong_size = balanced;
+        wrong_size.assigned_periods.pop_back();
+        check(!dbacp::evaluate_plan(instance, initial, wrong_size).feasible,
+              "X_t exige una posición por curso de la instancia");
         dbacp::Plan outside = balanced;
         outside.assigned_periods[0] = 4;
         check(dbacp::evaluate_plan(instance, initial, outside)
@@ -108,9 +106,15 @@ int main() {
 
         const dbacp::AcademicState next = dbacp::make_state(instance, 2, {"A"});
         dbacp::Plan replanned = dbacp::make_empty_plan(instance, next);
-        check(replanned.course_indices == std::vector<std::size_t>({1, 2, 3}),
-              "los cursos aprobados salen de U_t");
-        replanned.assigned_periods = {2, 3, 3};
+        check(replanned.assigned_periods == std::vector<int>({0, 0, 0, 0}),
+              "el curso aprobado conserva su posición con valor cero");
+        replanned.assigned_periods = {0, 2, 3, 3};
+        check(replanned.assigned_periods[1] == 2 && replanned.assigned_periods[0] == 0,
+              "X[i] conserva el índice del curso después de aprobar A");
+        dbacp::Plan approved_reassigned = replanned;
+        approved_reassigned.assigned_periods[0] = 2;
+        check(!dbacp::evaluate_plan(instance, next, approved_reassigned).feasible,
+              "un curso aprobado no puede recibir un período");
         const dbacp::PlanEvaluation dynamic =
             dbacp::evaluate_plan(instance, next, replanned);
         check(dynamic.feasible && dynamic.maximum_load == 3 &&
@@ -127,7 +131,7 @@ int main() {
                   after_semester.passed == std::vector<std::uint8_t>({1, 0, 0, 0}),
               "A se aprueba y D reprobado sigue pendiente");
         dbacp::Plan after_failure = dbacp::make_empty_plan(instance, after_semester);
-        after_failure.assigned_periods = {2, 3, 3};
+        after_failure.assigned_periods = {0, 2, 3, 3};
         check(dbacp::evaluate_plan(instance, after_semester, after_failure).feasible,
               "replanificación validada después de una reprobación");
         bool invalid_outcome_rejected = false;

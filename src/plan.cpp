@@ -52,13 +52,10 @@ AcademicState make_state(const Instance& instance, int current_period,
 Plan make_empty_plan(const Instance& instance, const AcademicState& state) {
     validate_state(instance, state);
     Plan plan;
-    for (std::size_t i = 0; i < state.passed.size(); ++i) {
-        if (!state.passed[i]) {
-            plan.course_indices.push_back(i);
-            plan.assigned_periods.push_back(0);
-        }
-    }
-    if (state.current_period > instance.periods && !plan.course_indices.empty()) {
+    plan.assigned_periods.assign(instance.courses.size(), 0);
+    if (state.current_period > instance.periods &&
+        std::any_of(state.passed.begin(), state.passed.end(),
+                    [](std::uint8_t passed) { return passed == 0; })) {
         throw std::invalid_argument(
             "sin planificación factible: quedan cursos pendientes después del período T");
     }
@@ -73,18 +70,16 @@ PlanEvaluation evaluate_plan(const Instance& instance, const AcademicState& stat
     result.credits_per_period.assign(static_cast<std::size_t>(remaining_periods), 0);
     result.courses_per_period.assign(static_cast<std::size_t>(remaining_periods), 0);
 
-    if (plan.course_indices.size() != plan.assigned_periods.size()) {
-        result.violations.push_back("el vector de cursos y el de períodos tienen tamaños distintos");
+    if (plan.assigned_periods.size() != instance.courses.size()) {
+        result.violations.push_back("X_t debe tener una posición por curso de la instancia");
         return result;
     }
 
-    const Plan expected = make_empty_plan(instance, state);
-    if (plan.course_indices != expected.course_indices) {
-        result.violations.push_back("las posiciones del vector no corresponden a U_t en orden de instancia");
-        return result;
-    }
-
-    if (remaining_periods == 0 && plan.course_indices.empty()) {
+    if (remaining_periods == 0 &&
+        std::all_of(state.passed.begin(), state.passed.end(),
+                    [](std::uint8_t passed) { return passed != 0; }) &&
+        std::all_of(plan.assigned_periods.begin(), plan.assigned_periods.end(),
+                    [](int period) { return period == 0; })) {
         result.complete = true;
         result.feasible = true;
         result.maximum_load = 0;
@@ -92,10 +87,16 @@ PlanEvaluation evaluate_plan(const Instance& instance, const AcademicState& stat
     }
 
     result.complete = true;
-    std::vector<int> assigned_by_course(instance.courses.size(), 0);
-    for (std::size_t k = 0; k < plan.course_indices.size(); ++k) {
-        const std::size_t course = plan.course_indices[k];
-        const int period = plan.assigned_periods[k];
+    for (std::size_t course = 0; course < instance.courses.size(); ++course) {
+        const int period = plan.assigned_periods[course];
+        if (state.passed[course]) {
+            if (period != 0) {
+                ++result.structural_violations;
+                result.violations.push_back("curso aprobado con período asignado: " +
+                                            instance.courses[course].id);
+            }
+            continue;
+        }
         if (period == 0) {
             result.complete = false;
             result.violations.push_back("curso sin asignar: " + instance.courses[course].id);
@@ -107,7 +108,6 @@ PlanEvaluation evaluate_plan(const Instance& instance, const AcademicState& stat
                                         instance.courses[course].id);
             continue;
         }
-        assigned_by_course[course] = period;
         const std::size_t offset = static_cast<std::size_t>(period - state.current_period);
         result.credits_per_period[offset] += instance.courses[course].credits;
         ++result.courses_per_period[offset];
@@ -121,7 +121,7 @@ PlanEvaluation evaluate_plan(const Instance& instance, const AcademicState& stat
         const std::size_t prerequisite = edge.first;
         const std::size_t dependent = edge.second;
         if (!state.passed[prerequisite] && !state.passed[dependent] &&
-            assigned_by_course[prerequisite] >= assigned_by_course[dependent]) {
+            plan.assigned_periods[prerequisite] >= plan.assigned_periods[dependent]) {
             ++result.structural_violations;
             result.violations.push_back("prerrequisito incumplido: " +
                                         instance.courses[prerequisite].id + " antes de " +
@@ -157,8 +157,10 @@ PlanEvaluation evaluate_plan(const Instance& instance, const AcademicState& stat
         result.maximum_load = *std::max_element(result.credits_per_period.begin(),
                                                 result.credits_per_period.end());
         std::int64_t pending_credits = 0;
-        for (const std::size_t course : plan.course_indices) {
-            pending_credits += instance.courses[course].credits;
+        for (std::size_t course = 0; course < instance.courses.size(); ++course) {
+            if (!state.passed[course]) {
+                pending_credits += instance.courses[course].credits;
+            }
         }
         const double average = static_cast<double>(pending_credits) / remaining_periods;
         for (const int credits : result.credits_per_period) {
@@ -175,37 +177,38 @@ PlanEvaluation evaluate_plan(const Instance& instance, const AcademicState& stat
 FeasiblePeriodRange feasible_period_range(const Instance& instance,
                                           const AcademicState& state,
                                           const Plan& plan,
-                                          std::size_t course_position) {
+                                          std::size_t course_index) {
     validate_state(instance, state);
-    const Plan expected = make_empty_plan(instance, state);
-    if (plan.course_indices != expected.course_indices ||
-        plan.assigned_periods.size() != expected.assigned_periods.size() ||
-        course_position >= plan.course_indices.size()) {
-        throw std::invalid_argument("el plan no corresponde a U_t o el curso no existe");
+    if (plan.assigned_periods.size() != instance.courses.size() ||
+        course_index >= instance.courses.size() || state.passed[course_index]) {
+        throw std::invalid_argument("el plan no corresponde a la instancia o el curso no está pendiente");
     }
 
-    std::vector<int> assigned_by_course(instance.courses.size(), 0);
-    for (std::size_t k = 0; k < plan.course_indices.size(); ++k) {
-        const int period = plan.assigned_periods[k];
+    for (std::size_t course = 0; course < instance.courses.size(); ++course) {
+        const int period = plan.assigned_periods[course];
+        if (state.passed[course]) {
+            if (period != 0) {
+                throw std::invalid_argument("un curso aprobado no puede tener período asignado");
+            }
+            continue;
+        }
         if (period < state.current_period || period > instance.periods) {
             throw std::invalid_argument("el cálculo de rangos requiere un plan completo en P_t");
         }
-        assigned_by_course[plan.course_indices[k]] = period;
     }
 
-    const std::size_t course = plan.course_indices[course_position];
     FeasiblePeriodRange range{state.current_period, instance.periods};
     for (const auto& edge : instance.prerequisites) {
         if (state.passed[edge.first] || state.passed[edge.second]) {
             continue;
         }
-        if (edge.second == course) {
+        if (edge.second == course_index) {
             range.earliest = std::max(range.earliest,
-                                      assigned_by_course[edge.first] + 1);
+                                      plan.assigned_periods[edge.first] + 1);
         }
-        if (edge.first == course) {
+        if (edge.first == course_index) {
             range.latest = std::min(range.latest,
-                                    assigned_by_course[edge.second] - 1);
+                                    plan.assigned_periods[edge.second] - 1);
         }
     }
     return range;
@@ -220,9 +223,9 @@ AcademicState advance_state(const Instance& instance, const AcademicState& state
     }
 
     std::unordered_map<std::string, std::size_t> scheduled;
-    for (std::size_t k = 0; k < plan.course_indices.size(); ++k) {
-        if (plan.assigned_periods[k] == state.current_period) {
-            const std::size_t course = plan.course_indices[k];
+    for (std::size_t course = 0; course < instance.courses.size(); ++course) {
+        if (!state.passed[course] &&
+            plan.assigned_periods[course] == state.current_period) {
             scheduled.emplace(instance.courses[course].id, course);
         }
     }

@@ -25,7 +25,6 @@ struct ReportOptions {
     std::optional<int> reference_value;
     bool simulate = false;
     bool manual_advance = false;
-    std::optional<std::uint64_t> simulation_seed;
     std::vector<double> approval_probabilities;
 };
 
@@ -39,6 +38,7 @@ public:
     void record_search(const Instance& instance, const AcademicState& state,
                        const std::string& phase,
                        const std::optional<InitializedSolution>& best,
+                       const std::optional<InitializedSolution>& best_initial,
                        const std::optional<InitializedSolution>& best_infeasible,
                        const std::vector<std::string>& diagnostics,
                        std::size_t evaluations, std::size_t initialization_evaluations,

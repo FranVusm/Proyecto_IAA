@@ -16,11 +16,11 @@ struct AcademicState {
     std::vector<std::uint8_t> passed;
 };
 
-// Representación X_t: posición k = curso pendiente course_indices[k];
-// assigned_periods[k] = x_i. El valor 0 significa "aún sin asignar" solo
-// mientras una hormiga construye su solución.
+// assigned_periods[i] = x_i: la posición i identifica directamente el curso i
+// de Instance::courses. En cursos aprobados vale 0; en cursos pendientes, 0
+// significa "aún sin asignar" durante la construcción. El estado académico
+// permite distinguir ambos casos. Un plan completo asigna cada pendiente.
 struct Plan {
-    std::vector<std::size_t> course_indices;
     std::vector<int> assigned_periods;
 };
 
@@ -60,7 +60,7 @@ PlanEvaluation evaluate_plan(const Instance& instance, const AcademicState& stat
 FeasiblePeriodRange feasible_period_range(const Instance& instance,
                                           const AcademicState& state,
                                           const Plan& plan,
-                                          std::size_t course_position);
+                                          std::size_t course_index);
 
 // Actualiza el estado al terminar t. Solo acepta aprobaciones de cursos
 // programados en t de un plan factible; los demás cursados reprueban.
